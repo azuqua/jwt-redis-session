@@ -1,0 +1,31 @@
+{
+  "name": "jwt-redis-session",
+  "version": "0.1.0",
+  "authors": "Azuqua",
+  "contributors": [{
+    "name": "Alec Embke",
+    "url": "alec@azuqua.com"
+  }],
+  "licenses": [{
+    "type": "MIT",
+    "url": "http://opensource.org/licenses/mit-license.php"
+  }],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/azuqua/jwt-redis-session"
+  },
+  "dependencies": {
+    "underscore": "^1.6.0",
+    "node-uuid": "^1.4.1",
+    "jsonwebtoken": "^0.4.1",
+    "moment": "^2.8.1"
+  },
+  "keywords": [
+    "azuqua",
+    "jwt",
+    "token",
+    "redis",
+    "session",
+    "middleware"
+  ]
+}
