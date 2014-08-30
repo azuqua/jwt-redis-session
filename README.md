@@ -23,7 +23,8 @@ Usage
 		secret: secret,
 		keyspace: "sess:", // this is the default if not specified
 		maxAge: 86400, // session TTL in seconds, this is the default
-		algorithm: "HS256" // hashing algorithm to use, this is the default (SHA-256)
+		algorithm: "HS256", // hashing algorithm to use, this is the default (SHA-256)
+		requestKey: "session" // the key under which all JWT data will be stored, this is the default but you're free to change this if you need to run this middleware with express-session
 	}));
 
 	// create a few CRUD routes on the app to demonstrate session usage
@@ -37,7 +38,14 @@ Usage
 			
 			// create a session and send the user their JWT
 			req.session.user = user;
-			req.session.create(function(err, token){
+
+			// attach any custom claims to the JWT
+			var claims = {
+				user_id: user.id
+			};
+
+			// you can also pass the callback as the first parameter if you don't require any custom claims
+			req.session.create(claims, function(err, token){
 				if(err)
 					res.status(500).json({ error: err.message || err });	
 				else
@@ -56,6 +64,11 @@ Usage
 		else
 			console.log("Request does not have a session");
 		
+		// read any custom claims
+		console.log("Custom claims: ", req.session.claims);
+
+		// read the original JWT
+		console.log("Token: ", req.session.jwt);
 
 		// maybe the application is distributed across multiple server instances
 		// and another instance does something to the session while this request is waiting...
