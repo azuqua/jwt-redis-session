@@ -22,7 +22,7 @@ Due to the way JSON Web Tokens work the claims object can only be modified when 
 This module supports a few initialization parameters that can be used to support several usage scenarios, including running any number of instances of this middleware module alongside each other.
 
 * **requestKey** - The key name on the request object used to identify the JWT session object. The default for this value is "session". This would interfere with a module such as [express-session](https://github.com/expressjs/session) so developers are free to modify this.
-* **requestArg** - The parameter name on the HTTP request that refers to the JWT. The middlware will look for this property in the query string, request body, and headers. The header name will be derived from a camelBack representation of the property name. For example, if the requestArg is "accessToken" (the default) then this instance of the middlware will look for the header name "x-access-token". 
+* **requestArg** - The parameter name on the HTTP request that refers to the JWT. The middleware will look for this property in the query string, request body, and headers. The header name will be derived from a camelBack representation of the property name. For example, if the requestArg is "accessToken" (the default) then this instance of the middlware will look for the header name "x-access-token". 
 * **keyspace** - The prefix of the keys stored in redis. By default this is "sess:".
 * **secret** - The secret key used to encrypt token data.
 * **algorithm** - The hashing algorithm to use, the default is "HS256" (SHA-256).
@@ -51,7 +51,7 @@ app.use(JWTRedisSession({
 
 **All examples following this assume the above configuration.**
 
-## Create
+## Create JWT Session
 
 Create a new JSON Web Token from the provided claims and store any relevant data in redis.
 
@@ -90,7 +90,7 @@ var handleRequest = function(req, res){
 		req.jwtSession.jwt
 	);
 
-	res.json(req.jwtSesssion.toJSON());
+	res.json(req.jwtSession.toJSON());
 
 };
 ```
