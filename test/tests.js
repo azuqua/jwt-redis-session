@@ -255,6 +255,7 @@ describe("JWT Redis Session Tests", function(){
 
 		var customClaims = { foo: "bar" },
 			customRequestKey = "jwtSession",
+			customArg = "fancyAccessToken",
 			customRedisKeyspace = "jwt:";
 
 		var token = null;
@@ -341,6 +342,90 @@ describe("JWT Redis Session Tests", function(){
 				server.removeRoute("/login", "get");
 				server.removeRoute("/ping", "get");
 				done();
+			});
+
+		});
+
+		it("Should allow the user to use a custom request argument name", function(done){
+
+			var testResponse = function(error, resp, callback){
+				assert.notOk(error, "No error thrown");
+				assert.isObject(resp, "Response is an object");
+				assert.deepEqual(resp, {}, "Response is a blank object");
+				callback(error);
+			};
+
+			var restartServer = function(options, callback){
+				server.inspect().client.end();
+				server.end(function(){
+					server.start(console.log, function(app, redisClient, cb){
+						options.client = redisClient;
+						app.use(JWT(options));
+						cb(8000);
+					}, callback);
+				});
+			};
+
+			var testData = {};
+
+			async.series([ 
+				function(callback){
+					restartServer({
+						secret: "abc123",
+						requestArg: customArg
+					}, callback);
+				},
+				function(callback){
+					server.addRoute("/login", "get", function(req, res){
+						req.session.create(function(error, token){
+							assert.isString(token, "Token is a string");
+							assert.notOk(error, "Error is null when creating token");
+							res.json({ token: token });
+						});
+					});	
+					server.addRoute("/ping", "all", function(req, res){
+						assert.isObject(req.session, "Request object has JWT object");
+						assert.isString(req.session.jwt, "Request object found the token");
+						res.json({});
+					});
+					callback();
+				},
+				function(callback){
+					request({ method: "get", path: "/login" }, null, function(error, resp){
+						assert.notOk(error, "Token creation did not return an error");
+						assert.isObject(resp, "Response is an object");
+						assert.property(resp, "token", "Response contains a token property");
+						assert.isString(resp.token, "Token is a string");
+						token = resp.token;
+						testData[customArg] = token;
+						callback(error);
+					});
+				},
+				function(callback){
+					request({ method: "get", path: "/ping" }, testData, _.partialRight(testResponse, callback));
+				},
+				function(callback){
+					request({ method: "post", path: "/ping" }, testData, _.partialRight(testResponse, callback));
+				},
+				function(callback){
+					request({ 
+							method: "get", 
+							path: "/ping",
+							headers: { "x-fancy-access-token": token }
+						}, 
+						null,
+						_.partialRight(testResponse, callback)
+					);
+				}
+			], function(error){
+				assert.notOk(error, "Async waterfall did not return an error");
+				server.removeRoute("/login", "get");
+				server.removeRoute("/ping", "all");
+				restartServer({
+					secret: "abc123",
+					requestKey: customRequestKey,
+					keyspace: customRedisKeyspace
+				}, done);
 			});
 
 		});

@@ -1,116 +1,168 @@
 JWT-Redis-Session
 =================
 
-<p>
-JSON Web Tokens backed by Redis. This module exposes almost the same <a href="https://github.com/expressjs/session#reqsession">API surface as a generic express 4.x session middleware module</a> with a few changes.
-</p> 
-<p>
-Since cookies are not used with JSON Web Tokens the transmission of the session ID via the JWT can no longer be transparently handled by the middleware. This means that the API surface for the session object must differ slightly from what one would find on <a href="https://github.com/expressjs/session">express-session</a>. Instead of calling req.session.save() to commit session changes as one would with express-session, this module requires that the application developer distinguish between creation and update commands. The difference between the two is that create() will generate a new session with a new ID and JWT while update() will check for and use the session ID already on req.session. After being issued a JWT the client will need to send the token with each subsequent request. It can be attached to the request as a part of the body, query string, or headers. In the case of the body or query string the token will be looked up by the key "accessToken". If the token is sent in the headers it will be queried by the name "x-access-token". See below for examples.
-</p>
-Usage
-=====
+JSON Web Token session middleware backed by [Redis](http://redis.io/). This connect middleware module exposes an API surface similar to a [session middleware](https://github.com/expressjs/session#reqsession) module, however instead of using cookies to transport session details this module uses JSON Web Tokens. This is useful for cookie-less clients or for cross service user authentication. 
 
-<pre>
-	
-	// ... create your express app object elsewhere
-	// ... create a redis client elsewhere with auth, etc
-	// ... generate or require a secret key elsewhere
+[Some info on JSON Web Tokens](http://tools.ietf.org/html/draft-ietf-oauth-json-web-token-19#section-3)
 
-	var JWTRedisSession = require("jwt-redis-session");
+# Install
 
-	app.use(JWTRedisSession({
-		client: redisClient,
-		secret: secret,
-		keyspace: "sess:", // this is the default if not specified
-		maxAge: 86400, // session TTL in seconds, this is the default
-		algorithm: "HS256", // hashing algorithm to use, this is the default (SHA-256)
-		requestKey: "session" // the key under which all JWT data will be stored, this is the default but you're free to change this if you need to run this middleware with express-session
-	}));
+	npm install jwt-redis-session
 
-	// create a few CRUD routes on the app to demonstrate session usage
-	
-	app.get("/session/create", function(req, res){
-	
-		// check the user's credentials somehow...
-		User.login(req.param("username"), req.param("password"), function(error, user){
-			if(error)
-				return res.status(500).json({ error: error.message || error });
+# Important Notes
+
+Developers are free to use either the JWT claims or redis to store session related data. In many cases when serializing a user's session only the minimal amount of data necessary to uniquely identify the user's session is actually serialized and sent to the client. By default when this module creates a JWT token it will only reserve the "jti" property on the JWT claims object. This property will refer to a UUID that acts as the key in redis for the user's session data. This ensures that by default this module will only serialize the minimal amount of data needed. Any other data stored on the JWT session object throughout the request-response process will be serialized and stored in redis. 
+
+Due to the way JSON Web Tokens work the claims object can only be modified when creating a new token. Because of this by default this module does not attach a TTL to the JWT. Any TTL attached to the JWT cannot be refreshed without regenerating a new JWT so this module instead manages a session's expiration via redis key expirations. Aside from the "jti" property, which this module reserves, developers are free to attach any data to the claims object when creating a new JWT, including a TTL, but need to be aware that any TTL on the claims object will supercede the TTL managed by redis. 
+
+# API Overview
+
+## Initialization
+
+This module supports a few initialization parameters that can be used to support several usage scenarios, including running any number of instances of this middleware module alongside each other.
+
+* **requestKey** - The key name on the request object used to identify the JWT session object. The default for this value is "session". This would interfere with a module such as [express-session](https://github.com/expressjs/session) so developers are free to modify this.
+* **requestArg** - The parameter name on the HTTP request that refers to the JWT. The middlware will look for this property in the query string, request body, and headers. The header name will be derived from a camelBack representation of the property name. For example, if the requestArg is "accessToken" (the default) then this instance of the middlware will look for the header name "x-access-token". 
+* **keyspace** - The prefix of the keys stored in redis. By default this is "sess:".
+* **secret** - The secret key used to encrypt token data.
+* **algorithm** - The hashing algorithm to use, the default is "HS256" (SHA-256).
+* **client** - The redis client to use to perform redis commands.
+* **maxAge** - The maximum age (in seconds) of a session. 
+
+```
+var JWTRedisSession = require("jwt-redis-session"),
+	express = require("express"),
+	redis = require("redis");
+
+var redisClient = redis.createClient(),
+	secret = generateSecretKeySomehow(),
+	app = express();
+
+app.use(JWTRedisSession({
+	client: redisClient,
+	secret: secret,
+	keyspace: "sess:", 
+	maxAge: 86400,
+	algorithm: "HS256",
+	requestKey: "jwtSession",
+	requestArg: "jwtToken"
+}));
+```
+
+**All examples following this assume the above configuration.**
+
+## Create
+
+Create a new JSON Web Token from the provided claims and store any relevant data in redis.
+
+```
+var handleRequest = function(req, res){
+	User.login(req.param("username"), req.param("password"), function(error, user){
+
+		// this will be stored in redis
+		req.jwtSession.user = user.toJSON(); 
+
+		// this will be attached to the JWT
+		var claims = {
+			iss: "my application name",
+			aud: "myapplication.com"
+		};
+
+		req.jwtSession.create(claims, function(error, token){
 			
-			// create a session and send the user their JWT
-			req.session.user = user;
-
-			// attach any custom claims to the JWT
-			var claims = {
-				user_id: user.id
-			};
-
-			// you can also pass the callback as the first parameter if you don't require any custom claims
-			req.session.create(claims, function(err, token){
-				if(err)
-					res.status(500).json({ error: err.message || err });	
-				else
-					res.status(200).json({ token: token });
-			});	
+			res.json({ token: token });
 
 		});
-
 	});
-	
-	app.get("/session/read", function(req, res){
+};
+```
 
-		// use the existence of an "id" property on the session to determine if a session exists
-		if(req.session.id)
-			console.log("Session found!", req.session);
-		else
-			console.log("Request does not have a session");
+## Read JWT Data
+
+The session's UUID, JWT claims, and the JWT itself are all available on the jwtSession object as well. Any of these properties can be used to test for the existence of a valid JWT and session.
+
+```
+var handleRequest = function(req, res){
+	
+	console.log("Request JWT session data: ", 
+		req.jwtSession.id, 
+		req.jwtSession.claims, 
+		req.jwtSession.jwt
+	);
+
+	res.json(req.jwtSesssion.toJSON());
+
+};
+```
+
+## Modify Session Data
+
+Any modifications to the jwtSession will be reflected in redis.
+
+```
+var handleRequest = function(req, res){
+	
+	if(req.jwtSession.id){
 		
-		// read any custom claims
-		console.log("Custom claims: ", req.session.claims);
+		req.jwtSession.foo = "bar";
 
-		// read the original JWT
-		console.log("Token: ", req.session.jwt);
-
-		// maybe the application is distributed across multiple server instances
-		// and another instance does something to the session while this request is waiting...
-		
-		setTimeout(function(){
-
-			// force a reload of the session from redis
-			req.session.reload(function(error){
-				if(error)
-					res.status(500).json({ error: error.message || error });
-				else
-					res.json({ session: req.session });
-			});
-
-		}, 10000);
-
-	});
-
-	app.get("/session/update", function(req, res){
-	
-		req.session.foo = "bar";
-
-		// commit the session changes to redis
-		req.session.update(function(error){
-			if(error)
-				res.status(500).json({ error: error.message || error });
-			else
-				res.json({ session: req.session });
+		req.jwtSession.update(function(error){
+			res.json(req.jwtSession.toJSON());
 		});
 
-	});
+	}else{
+		res.redirect("/login");
+	}
+};
+```
 
-	app.get("/session/destroy", function(req, res){
+## Reload Session Data
+
+Force a reload of the session data from redis.
+
+```
+var handleRequest = function(req, res){
 	
-		// the user's JWT will no longer be associated with their session
-		req.session.destroy(function(error){
-			if(error)
-				res.status(500).json({ error: error.message || error });
-			else
-				res.end();
+	setTimeout(function(){
+
+		req.jwtSession.reload(function(error){
+			res.json(req.jwtSession.toJSON());
 		});
 
+	}, 5000);
+
+};
+```
+
+## Refresh the TTL on a Session
+
+```
+var handleRequest = function(req, res){
+	
+	req.jwtSession.touch(function(error){
+		res.json(req.jwtSession.toJSON());
 	});
 
-</pre>
+};
+```
+
+## Destroy a Session
+
+Remove the session data from redis. The user's JWT may still be valid within its expiration window, but the backing data in redis will no longer exist. This module will not recognize the JWT when this is the case.
+
+```
+var handleRequest = function(req, res){
+	
+	req.jwtSession.destroy(function(error){
+		res.redirect("/login");
+	});
+	
+};
+```
+
+# Tests
+
+This module uses Mocha/Chai for testing. In order to run the tests a local redis server must be running or the REDIS_HOST and REDIS_PORT environment variables must be set.
+
+	npm install
+	grunt test

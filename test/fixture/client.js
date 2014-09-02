@@ -39,7 +39,7 @@ var serializeObject = function(obj, prefix) {
 		}else{
 			out.push(encodeURIComponent(formatted) + "=" + encodeURIComponent(obj[key]));
 		}
-	};
+	}
 	return out.join("&");
 };
 

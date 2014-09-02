@@ -10,7 +10,6 @@ module.exports = function(grunt){
         "test/**/*.js"
       ],
       options: {
-        curly: true,
         eqeqeq: true,
         eqnull: true,
         browser: false
