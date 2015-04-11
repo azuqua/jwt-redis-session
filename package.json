@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "node-uuid": "^1.4.1",
-    "jsonwebtoken": "^4.2.2",
+    "jsonwebtoken": "^5.0.0",
     "lodash": "^2.4.1"
   },
   "devDependencies": {
