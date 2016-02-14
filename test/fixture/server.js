@@ -1,6 +1,7 @@
 
 var	http = require("http"),
 	express = require("express"),
+	bodyParser = require("body-parser"),
 	_ = require("lodash"),
 	redis = require("redis");
 
@@ -9,21 +10,15 @@ var client, app, server;
 module.exports = {
 
 	addRoute: function(path, method, callback){
+		callback.name = callback.name;
 		app[method](path, callback);
 	},
 
 	removeRoute: function(path, method){
-		if(method === "all"){
-			_.each(app.routes, function(routes, _method){
-				_.remove(routes, function(route){
-					return route.path === path;
-				});
-			});
-		}else{
-			_.remove(app.routes[method], function(route){
-				return route.path === path;
-			});
-		}
+		app._router.stack = _.reject(app._router.stack, function(route){
+			return route.route && route.route.path === path 
+				&& (method ? route.route.methods[method] : true);
+		});
 	},
 
 	inspect: function(callback){
@@ -47,12 +42,10 @@ module.exports = {
 
 		app = express();
 
-		app.use(express.urlencoded());
-		app.use(express.json());
+		app.use(bodyParser.urlencoded({ extended: false }));
+		app.use(bodyParser.json());
 
 		setup(app, client, function(port){
-
-			app.use(app.router);
 
 			port = port ? port : 8000;
 

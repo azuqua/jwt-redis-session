@@ -12,7 +12,8 @@ module.exports = function(grunt){
       options: {
         eqeqeq: true,
         eqnull: true,
-        browser: false
+        browser: false,
+        laxbreak: true
       }
     },
 
