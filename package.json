@@ -19,9 +19,12 @@
     "type": "git",
     "url": "git://github.com/azuqua/jwt-redis-session"
   },
+  "scripts": {
+    "test": "mocha test/tests.js"
+  },
   "dependencies": {
     "jsonwebtoken": "^5.5.4",
-    "lodash": "^3.10.1",
+    "lodash": "^4.16.1",
     "node-uuid": "^1.4.1"
   },
   "devDependencies": {
