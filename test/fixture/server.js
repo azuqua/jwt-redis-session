@@ -57,7 +57,7 @@ module.exports = {
 	},
 
 	end: function(callback){
-		client.end();
+		client.quit();
 		server.close(callback);
 	}
 
