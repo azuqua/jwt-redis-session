@@ -1,7 +1,7 @@
 {
   "name": "jwt-redis-session",
   "description": "JSON Web Token session middleware backed by Redis",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "authors": "Azuqua",
   "contributors": [
     {
