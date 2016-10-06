@@ -26,7 +26,7 @@ describe("JWT Redis Session Tests", function(){
 		});
 
 		after(function(done){
-			server.inspect().client.end();
+			server.inspect().client.quit();
 			server.end(done);
 		});
 
@@ -284,7 +284,7 @@ describe("JWT Redis Session Tests", function(){
 		});
 
 		after(function(done){
-			server.inspect().client.end();
+			server.inspect().client.quit();
 			server.end(done);
 		});
 
@@ -370,7 +370,7 @@ describe("JWT Redis Session Tests", function(){
 			};
 
 			var restartServer = function(options, callback){
-				server.inspect().client.end();
+				server.inspect().client.quit();
 				server.end(function(){
 					server.start(console.log, function(app, redisClient, cb){
 						options.client = redisClient;
