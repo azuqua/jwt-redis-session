@@ -3,9 +3,9 @@ var	http = require("http"),
 	express = require("express"),
 	bodyParser = require("body-parser"),
 	_ = require("lodash"),
-	redis = require("redis");
+	redis = require("fakeredis");
 
-var client, app, server;
+var redisClient, client, app, server;
 
 module.exports = {
 
@@ -30,15 +30,15 @@ module.exports = {
 	},
 
 	start: function(log, setup, callback){
-		
-		client = redis.createClient(
-			process.env.REDIS_PORT || 6379,
-			process.env.REDIS_HOST || "127.0.0.1"
-		);
-
-		client.on("error", function(e){
-			log("Error with redis server!", e);
-		});
+		if(redisClient){
+			client = redisClient;
+		}else{
+			client = redis.createClient(
+				process.env.REDIS_PORT || 6379,
+				process.env.REDIS_HOST || "127.0.0.1"
+			);
+			redisClient = client;
+		}
 
 		app = express();
 
@@ -57,7 +57,6 @@ module.exports = {
 	},
 
 	end: function(callback){
-		client.quit();
 		server.close(callback);
 	}
 

@@ -26,7 +26,6 @@ describe("JWT Redis Session Tests", function(){
 		});
 
 		after(function(done){
-			server.inspect().client.quit();
 			server.end(done);
 		});
 
@@ -284,7 +283,6 @@ describe("JWT Redis Session Tests", function(){
 		});
 
 		after(function(done){
-			server.inspect().client.quit();
 			server.end(done);
 		});
 
@@ -370,7 +368,6 @@ describe("JWT Redis Session Tests", function(){
 			};
 
 			var restartServer = function(options, callback){
-				server.inspect().client.quit();
 				server.end(function(){
 					server.start(console.log, function(app, redisClient, cb){
 						options.client = redisClient;
@@ -446,6 +443,181 @@ describe("JWT Redis Session Tests", function(){
 			});
 
 		});
+
+		it("Should allow the user to use a custom request argument name with tokenKey", function(done){
+
+			var testResponse = function(error, resp, callback){
+				assert.notOk(error, "No error thrown");
+				assert.isObject(resp, "Response is an object");
+				assert.deepEqual(resp, {}, "Response is a blank object");
+				callback(error);
+			};
+
+			var restartServer = function(options, callback){
+				server.end(function(){
+					server.start(console.log, function(app, redisClient, cb){
+						options.client = redisClient;
+						app.use(JWT(options));
+						cb(8000);
+					}, callback);
+				});
+			};
+
+			var testData = {};
+
+			var handler1 = function handler1(req, res){
+				req.session.create(function(error, token){
+					assert.isString(token, "Token is a string");
+					assert.notOk(error, "Error is null when creating token");
+					res.json({ token: token });
+				});
+			};
+			var handler2 = function handler2(req, res){
+				assert.isObject(req.session, "Request object has JWT object");
+				assert.isString(req.session.foo, "Request object found the token");
+				res.json({});
+			};
+
+			async.series([ 
+				function(callback){
+					restartServer({
+						secret: "abc123",
+						requestArg: customArg,
+						tokenKey: "foo"
+					}, callback);
+				},
+				function(callback){
+					server.addRoute("/login", "get", handler1);	
+					server.addRoute("/ping", "all", handler2);
+					callback();
+				},
+				function(callback){
+					request({ method: "get", path: "/login" }, null, function(error, resp){
+						assert.notOk(error, "Token creation did not return an error");
+						assert.isObject(resp, "Response is an object");
+						assert.property(resp, "token", "Response contains a token property");
+						assert.isString(resp.token, "Token is a string");
+						token = resp.token;
+						testData[customArg] = token;
+						callback(error);
+					});
+				},
+				function(callback){
+					request({ method: "get", path: "/ping" }, testData, _.partialRight(testResponse, callback));
+				},
+				function(callback){
+					request({ method: "post", path: "/ping" }, testData, _.partialRight(testResponse, callback));
+				},
+				function(callback){
+					request({ 
+							method: "get", 
+							path: "/ping",
+							headers: { "x-fancy-access-token": token }
+						}, 
+						null,
+						_.partialRight(testResponse, callback)
+					);
+				}
+			], function(error){
+				assert.notOk(error, "Async waterfall did not return an error");
+				server.removeRoute("/login", "get");
+				server.removeRoute("/ping");
+				restartServer({
+					secret: "abc123",
+					requestKey: customRequestKey,
+					keyspace: customRedisKeyspace
+				}, done);
+			});
+		});
+
+
+		it("Should allow the user to use a custom request argument name with keepRequestArgHeader", function(done){
+
+			var testResponse = function(error, resp, callback){
+				assert.notOk(error, "No error thrown");
+				assert.isObject(resp, "Response is an object");
+				assert.deepEqual(resp, {}, "Response is a blank object");
+				callback(error);
+			};
+
+			var restartServer = function(options, callback){
+				server.end(function(){
+					server.start(console.log, function(app, redisClient, cb){
+						options.client = redisClient;
+						app.use(JWT(options));
+						cb(8000);
+					}, callback);
+				});
+			};
+
+			var testData = {};
+
+			var handler1 = function handler1(req, res){
+				req.session.create(function(error, token){
+					assert.isString(token, "Token is a string");
+					assert.notOk(error, "Error is null when creating token");
+					res.json({ token: token });
+				});
+			};
+			var handler2 = function handler2(req, res){
+				assert.isObject(req.session, "Request object has JWT object");
+				assert.isString(req.session.jwt, "Request object found the token");
+				res.json({});
+			};
+
+			async.series([ 
+				function(callback){
+					restartServer({
+						secret: "abc123",
+						requestArg: customArg,
+						keepRequestArgHeader: true
+					}, callback);
+				},
+				function(callback){
+					server.addRoute("/login", "get", handler1);	
+					server.addRoute("/ping", "all", handler2);
+					callback();
+				},
+				function(callback){
+					request({ method: "get", path: "/login" }, null, function(error, resp){
+						assert.notOk(error, "Token creation did not return an error");
+						assert.isObject(resp, "Response is an object");
+						assert.property(resp, "token", "Response contains a token property");
+						assert.isString(resp.token, "Token is a string");
+						token = resp.token;
+						testData[customArg] = token;
+						callback(error);
+					});
+				},
+				function(callback){
+					request({ method: "get", path: "/ping" }, testData, _.partialRight(testResponse, callback));
+				},
+				function(callback){
+					request({ method: "post", path: "/ping" }, testData, _.partialRight(testResponse, callback));
+				},
+				function(callback){
+					request({ 
+							method: "get", 
+							path: "/ping",
+							headers: _.set({}, customArg, token)
+						}, 
+						null,
+						_.partialRight(testResponse, callback)
+					);
+				}
+			], function(error){
+				assert.notOk(error, "Async waterfall did not return an error");
+				server.removeRoute("/login", "get");
+				server.removeRoute("/ping");
+				restartServer({
+					secret: "abc123",
+					requestKey: customRequestKey,
+					keyspace: customRedisKeyspace
+				}, done);
+			});
+		});
+
+
 
 	});
 
