@@ -1,6 +1,8 @@
 JWT-Redis-Session
 =================
 
+[![Build Status](https://travis-ci.org/azuqua/jwt-redis-session.svg?branch=master)](https://travis-ci.org/azuqua/jwt-redis-session)
+
 JSON Web Token session middleware backed by [Redis](http://redis.io/). This connect middleware module exposes an API surface similar to a [session middleware](https://github.com/expressjs/session#reqsession) module, however instead of using cookies to transport session details this module uses JSON Web Tokens. This is useful for cookie-less clients or for cross service user authentication. 
 
 [Some info on JSON Web Tokens](http://tools.ietf.org/html/draft-ietf-oauth-json-web-token-19#section-3)
@@ -11,9 +13,9 @@ JSON Web Token session middleware backed by [Redis](http://redis.io/). This conn
 
 # Important Notes
 
-Developers are free to use either the JWT claims or redis to store session related data. In many cases when serializing a user's session only the minimum amount of data necessary to uniquely identify the user's session is actually serialized and sent to the client. By default when this module creates a JWT token it will only reserve the "jti" property on the JWT claims object. This property will refer to a UUID that acts as the key in redis for the user's session data. This ensures that by default this module will only serialize the minimum amount of data needed. Any other data stored on the JWT session object throughout the request-response process will be serialized and stored in Redis. 
+Developers are free to use either the JWT claims or redis to store session related data. In many cases when serializing a user's session only the minimum amount of data necessary to uniquely identify the user's session is actually serialized and sent to the client. By default when this module creates a JWT token it will only reserve the `jti` property on the JWT claims object. This property will refer to a UUID that acts as the key in redis for the user's session data. This ensures that by default this module will only serialize the minimum amount of data needed. Any other data stored on the JWT session object throughout the request-response process will be serialized and stored in Redis. 
 
-Due to the way JSON Web Tokens work the claims object can only be modified when creating a new token. Because of this by default this module does not attach a TTL to the JWT. Any TTL attached to the JWT cannot be refreshed without regenerating a new JWT so this module instead manages a session's expiration via redis key expirations. Aside from the "jti" property, which this module reserves, developers are free to attach any data to the claims object when creating a new JWT, including a TTL, but should be aware that if a TTL is set on the JWT claims (`exp`) then the actual TTL used will be `min(claims.exp, options.maxAge)`.
+Due to the way JSON Web Tokens work the claims object can only be modified when creating a new token. Because of this by default this module does not attach a TTL to the JWT. Any TTL attached to the JWT cannot be refreshed without regenerating a new JWT so this module instead manages a session's expiration via redis key expirations. Aside from the `jti` property, which this module reserves, developers are free to attach any data to the claims object when creating a new JWT, including a TTL, but should be aware that if a TTL is set on the JWT claims (`exp`) then the actual TTL used will be `min(claims.exp, options.maxAge)`.
 
 # API Overview
 
