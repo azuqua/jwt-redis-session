@@ -167,7 +167,7 @@ var handleRequest = function(req, res){
 
 # Tests
 
-This module uses Mocha/Chai for testing. In order to run the tests a local redis server must be running or the REDIS_HOST and REDIS_PORT environment variables must be set.
+This module uses Mocha/Chai for testing. 
 
 	npm install
 	grunt test
