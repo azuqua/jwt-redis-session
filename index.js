@@ -1,4 +1,1 @@
-
-var path = require("path");
-
-module.exports = require(path.join(__dirname, "lib/jwtRedisSession"));
+module.exports = require("./lib/jwtRedisSession"));
