@@ -25,6 +25,7 @@
   "dependencies": {
     "jsonwebtoken": "^8.0.0",
     "lodash": "^4.16.1",
+    "lru-cache": "^4.0.1",
     "node-uuid": "^1.4.1"
   },
   "devDependencies": {
