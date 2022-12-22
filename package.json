@@ -23,7 +23,7 @@
     "test": "mocha test/tests.js"
   },
   "dependencies": {
-    "jsonwebtoken": "^8.0.0",
+    "jsonwebtoken": "^9.0.0",
     "lodash": "^4.16.1",
     "node-uuid": "^1.4.1"
   },
